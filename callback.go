@@ -27,6 +27,7 @@ type Callback struct {
 	Wage             string `json:"Wage"`
 	SecurePen        string `json:"SecurePen"`
 	HashedCardNumber string `json:"HashedCardNumber"`
+	Token            string `json:"Token"`
 }
 
 func (c *Callback) PaymentSuccessful() bool {

@@ -62,6 +62,31 @@ func NewClientWithHttpProxy(terminalID, terminalPassword string, proxyURL string
 	}, nil
 }
 
+func NewClientWithHttpAndReverseProxy(
+	terminalID,
+	terminalPassword,
+	httpProxyURL,
+	reverseProxyURL string,
+) (*Client, error) {
+	proxyUrl, err := url.Parse(httpProxyURL)
+	if err != nil {
+		return nil, err
+	}
+
+	transport := &http.Transport{
+		Proxy: http.ProxyURL(proxyUrl),
+	}
+
+	return &Client{
+		terminalID:       terminalID,
+		terminalPassword: terminalPassword,
+
+		httpClient: &http.Client{Transport: transport},
+
+		urlPrefix: reverseProxyURL,
+	}, nil
+}
+
 func (c *Client) GeneratePaymentToken(
 	invoiceID string,
 	amount float64,
@@ -108,7 +133,7 @@ func (c *Client) GeneratePaymentToken(
 
 	err = json.Unmarshal(b, &tokenResponse)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to unmarshal token response: %s - %s", err.Error(), string(b))
 	}
 
 	if tokenResponse.Status != 1 {
@@ -188,6 +213,7 @@ func (c *Client) HttpCallback(
 		wage := r.Form.Get("Wage")
 		securePen := r.Form.Get("SecurePen")
 		hashedCardNumber := r.Form.Get("HashedCardNumber")
+		token := r.Form.Get("Token")
 
 		if mid == "" || state == "" || resNum == "" {
 			onError(MissingParams, r, w)
@@ -207,6 +233,7 @@ func (c *Client) HttpCallback(
 			Wage:             wage,
 			SecurePen:        securePen,
 			HashedCardNumber: hashedCardNumber,
+			Token:            token,
 		}
 
 		if cback.PaymentSuccessful() {
